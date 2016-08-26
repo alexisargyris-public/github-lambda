@@ -1,0 +1,16 @@
+{
+  "name": "github-lamba",
+  "description": "a lambda-based wrapper for github",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexisargyris/github-lambda"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "github": "^2.5.2"
+  },
+  "devDependencies": {
+    "eslint": "^3.3.1"
+  }
+}
