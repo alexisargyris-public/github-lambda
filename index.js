@@ -1,7 +1,7 @@
 var creds = require('./creds.js').creds;
 var GitHubApi = require('github');
 
-function respond(error, response, callback) {
+function respond(error, response) {
   context.callbackWaitsForEmptyEventLoop = false;
   if (error) {
     callback(error)
@@ -40,14 +40,7 @@ exports.handler = (event, context, callback) => {
     // get all repos of the authenticated user
     github.repos.getAll({
       per_page: 100
-    }, (error, response) => {
-      context.callbackWaitsForEmptyEventLoop = false;
-      if (error) {
-        callback(error)
-      } else {
-        callback(null, response)
-      }
-    });
+    }, respond.bind(this));
     break;
   case 'getCommit':
     // get the content of a commit
