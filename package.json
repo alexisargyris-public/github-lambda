@@ -1,6 +1,6 @@
 {
   "name": "github-lamba",
-  "description": "a lambda-based wrapper for github",
+  "description": "a github api wrapper for aws lambda",
   "version": "1.0.0",
   "repository": {
     "type": "git",

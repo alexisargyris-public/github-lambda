@@ -1,5 +1,5 @@
 # github-lambda
-a lambda-based wrapper for github
+a github api wrapper for aws lambda
 
 ## authentication
 
