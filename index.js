@@ -101,5 +101,3 @@ exports.handler = (event, context, callback) => {
   default:
   }
 }
-
-exports.handler({ cmd: 'getAll' });
