@@ -1,11 +1,11 @@
 var creds = require('./creds.js').creds;
 var GitHubApi = require('github');
 
-function respond(error, response) {
+function respond(error, response, callback) {
   if (error) {
-    if (callback !== undefined) callback(error)
+    callback(error)
   } else {
-    if (callback !== undefined) callback(null, response)
+    callback(null, response)
   }
 }
 
@@ -28,7 +28,7 @@ exports.handler = (event, context, callback) => {
 
   // if no command is specified, then exit
   if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
-    if (callback !== undefined) callback(new Error('Missing cmd parameter'))
+    callback(new Error('Missing cmd parameter'))
   }
   github.authenticate({
     type: 'oauth',
@@ -101,3 +101,5 @@ exports.handler = (event, context, callback) => {
   default:
   }
 }
+
+exports.handler({ cmd: 'getAll' });
