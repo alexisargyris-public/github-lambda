@@ -1,15 +1,6 @@
 var creds = require('./creds.js').creds;
 var GitHubApi = require('github');
 
-function respond(error, response) {
-  context.callbackWaitsForEmptyEventLoop = false;
-  if (error) {
-    callback(error)
-  } else {
-    callback(null, response)
-  }
-}
-
 exports.handler = (event, context, callback) => {
   var user = creds.user;
   var token = creds.token;
@@ -27,7 +18,7 @@ exports.handler = (event, context, callback) => {
     }
   });
 
-  // if no command is specified, then exit
+  // if no command was specified, then exit
   if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
     callback(new Error('Missing cmd parameter'))
   }
@@ -40,7 +31,11 @@ exports.handler = (event, context, callback) => {
     // get all repos of the authenticated user
     github.repos.getAll({
       per_page: 100
-    }, respond.bind(this));
+    }, (error, response) => {
+      context.callbackWaitsForEmptyEventLoop = false;
+      if (error) { callback(error) } 
+      else { callback(null, response) }
+    });
     break;
   case 'getCommit':
     // get the content of a commit
@@ -58,7 +53,11 @@ exports.handler = (event, context, callback) => {
       user: user,
       repo: reponame,
       sha: commitsha
-    }, respond.bind(this));
+    }, (error, response) => {
+      context.callbackWaitsForEmptyEventLoop = false;
+      if (error) { callback(error) } 
+      else { callback(null, response) }
+    });
     break;
   case 'getContent':
     // get the content of a file
@@ -79,7 +78,11 @@ exports.handler = (event, context, callback) => {
       repo: reponame,
       path: path,
       ref: ref
-    }, respond.bind(this));
+    }, (error, response) => {
+      context.callbackWaitsForEmptyEventLoop = false;
+      if (error) { callback(error) } 
+      else { callback(null, response) }
+    });
     break;
   case 'getTree':
     // get the content of a tree
@@ -97,7 +100,11 @@ exports.handler = (event, context, callback) => {
       repo: reponame,
       sha: sha,
       recursive: true
-    }, respond.bind(this))
+    }, (error, response) => {
+      context.callbackWaitsForEmptyEventLoop = false;
+      if (error) { callback(error) } 
+      else { callback(null, response) }
+    })
     break;
   default:
   }
