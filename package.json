@@ -1,5 +1,6 @@
 {
-  "name": "github-lamba",
+  "author": "Alexis Argyris <alexis.argyris@gmail.com>)",
+  "name": "github-lambda",
   "description": "a github api wrapper for aws lambda",
   "version": "1.0.0",
   "repository": {
