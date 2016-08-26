@@ -37,19 +37,36 @@ exports.handler = (event, context, callback) => {
       else { callback(null, response) }
     });
     break;
+  case 'getCommits':
+    // get the commits of a repo
+    var reponame;
+    // if no repo was provided, then exit
+    if ((event.reponame === undefined)) {
+      callback(new Error('Missing repo/sha parameters'))
+    } else {
+      reponame = event.reponame;
+    }
+    github.repos.getCommits({
+      user: user,
+      repo: reponame
+    }, (error, response) => {
+      context.callbackWaitsForEmptyEventLoop = false;
+      if (error) { callback(error) } 
+      else { callback(null, response) }
+    });
+    break;
   case 'getCommit':
     // get the content of a commit
     var reponame;
     var commitsha;
     // if no repo/sha were provided, then exit
     if ((event.reponame === undefined) || (event.commitsha === undefined)) {
-      if (callback !== undefined) callback(new Error('Missing repo/sha parameters'))
+      callback(new Error('Missing repo/sha parameters'))
     } else {
       reponame = event.reponame;
       commitsha = event.commitsha;
     }
     github.repos.getCommit({
-      // get content of commit
       user: user,
       repo: reponame,
       sha: commitsha
@@ -66,14 +83,13 @@ exports.handler = (event, context, callback) => {
     var ref;
     // if no repo/path/ref were provided, then exit
     if ((event.reponame === undefined) || (event.path === undefined) || (event.ref === undefined)) {
-      if (callback !== undefined) callback(new Error('Missing repo/path/ref parameters'))
+      callback(new Error('Missing repo/path/ref parameters'))
     } else {
       reponame = event.reponame;
       path = event.path;
       ref = event.ref;
     }
     github.repos.getContent({
-      // get content of commit
       user: user,
       repo: reponame,
       path: path,
@@ -90,7 +106,7 @@ exports.handler = (event, context, callback) => {
     var sha;
     // if no repo/sha were provided, then exit
     if ((event.reponame === undefined) || (event.sha === undefined)) {
-      if (callback !== undefined) callback(new Error('Missing repo/sha parameters'))
+      callback(new Error('Missing repo/sha parameters'))
     } else {
       reponame = event.reponame;
       sha = event.sha;
