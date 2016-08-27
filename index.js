@@ -1,27 +1,29 @@
 var creds = require('./creds.js').creds;
 var GitHubApi = require('github');
+var user;
+var token;
+var github;
 
 exports.handler = (event, context, callback) => {
-  var user = creds.user;
-  var token = creds.token;
-  var github = new GitHubApi({
-    // required
-    version: '3.0.0',
-    // optional
-    debug: true,
-    protocol: 'https',
-    host: 'api.github.com',
-    pathPrefix: '',
-    timeout: 5000,
-    headers: {
-      'user-agent': user
-    }
-  });
-
   // if no command was specified, then exit
   if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
     callback(new Error('Missing cmd parameter'))
   } else {
+    user = creds.user;
+    token = creds.token;
+    github = new GitHubApi({
+      // required
+      version: '3.0.0',
+      // optional
+      debug: true,
+      protocol: 'https',
+      host: 'api.github.com',
+      pathPrefix: '',
+      timeout: 5000,
+      headers: {
+        'user-agent': user
+      }
+    });
     github.authenticate({
       type: 'oauth',
       token: token
