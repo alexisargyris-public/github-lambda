@@ -43,7 +43,7 @@ exports.handler = (event, context, callback) => {
       // get the commits of a repo
       var reponame;
       // if no repo was provided, then exit
-      if ((event.reponame === undefined)) {
+      if (event.reponame === undefined) {
         callback(new Error('Missing repo/sha parameters'))
       } else {
         reponame = event.reponame;
