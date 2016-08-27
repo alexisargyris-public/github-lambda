@@ -1,4 +1,4 @@
-[![Build Status](https://semaphoreci.com/api/v1/alexisargyris/github-lambda/branches/master/badge.svg)](https://semaphoreci.com/alexisargyris/github-lambda)
+[![Build Status](https://semaphoreci.com/api/v1/alexisargyris/github-lambda/branches/master/shields_badge.svg)](https://semaphoreci.com/alexisargyris/github-lambda)
 
 # github-lambda
 a wrapper of some github api functions  for aws lambda
