@@ -1,11 +1,11 @@
 [![Build Status](https://semaphoreci.com/api/v1/alexisargyris/github-lambda/branches/master/shields_badge.svg)](https://semaphoreci.com/alexisargyris/github-lambda)
 
 # github-lambda
-a wrapper of some github api functions  for aws lambda
+a simple wrapper of selected [node-github](https://github.com/mikedeboer/node-github) functions for aws lambda
 
 ## authentication
 
-A file called 'creds.js' is required with the following content:
+A file named 'creds.js' is required with the following content:
 
     const creds = {
       'user': '<github-user-name>',
@@ -13,12 +13,12 @@ A file called 'creds.js' is required with the following content:
     };
     exports.creds = creds;
 
-## api
+## github api
 
 The following functions are covered:
 
-* [getAll()](https://mikedeboer.github.io/node-github/#api-repos-getAll): get all repos of the authenticated user
-* [getCommits(repo, sha)](https://mikedeboer.github.io/node-github/#api-repos-getCommits): get the commits of a repo
-* [getCommit(repo, sha)](https://mikedeboer.github.io/node-github/#api-repos-getCommit): get the content of a commit
-* [getContent(repo, path, ref)](https://mikedeboer.github.io/node-github/#api-repos-getContent): get the content of a file
-* [getTree(repo, sha)](https://mikedeboer.github.io/node-github/#api-gitdata-getTree): get the content of a tree
+* [getAll](https://mikedeboer.github.io/node-github/#api-repos-getAll) / getAll(): get all repos of the authenticated user
+* [getCommits](https://mikedeboer.github.io/node-github/#api-repos-getCommits) / getCommits(repo, sha): get the commits of a repo
+* [getCommit](https://mikedeboer.github.io/node-github/#api-repos-getCommit) / getCommit(repo, sha): get the content of a commit
+* [getContent](https://mikedeboer.github.io/node-github/#api-repos-getContent) / getContent(repo, path, ref): get the content of a file
+* [getTree](https://mikedeboer.github.io/node-github/#api-gitdata-getTree) / getTree(repo, sha): get the content of a tree

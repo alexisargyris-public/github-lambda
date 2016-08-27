@@ -1,7 +1,7 @@
 {
   "author": "Alexis Argyris <alexis.argyris@gmail.com>)",
   "name": "github-lambda",
-  "description": "a wrapper of some github api functions  for aws lambda",
+  "description": "a simple wrapper of selected github api functions for aws lambda",
   "version": "1.0.0",
   "repository": {
     "type": "git",
