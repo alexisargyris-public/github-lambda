@@ -72,7 +72,7 @@ exports.handler = (event, context, callback) => {
           repo: reponame,
           sha: commitsha
         }, (error, response) => {
-          context.callbackWaitsForEmptyEventLoop = false;
+          // context.callbackWaitsForEmptyEventLoop = false;
           if (error) { callback(error) } 
           else { callback(null, response) }
         });
@@ -128,3 +128,5 @@ exports.handler = (event, context, callback) => {
     }
   }
 }
+
+// exports.handler({ cmd: 'getCommit', reponame: 'zesti', commitsha: 'ccd94703420e07b22b6346487d56795237f9cb80' });
