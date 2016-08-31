@@ -1,7 +1,7 @@
 {
   "author": "Alexis Argyris <alexis.argyris@gmail.com>)",
   "name": "github-lambda",
-  "description": "a simple wrapper of selected github api functions for aws lambda",
+  "description": "a simple, promisified wrapper of selected node-github functions for aws lambda",
   "version": "1.0.0",
   "repository": {
     "type": "git",
@@ -9,6 +9,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "bluebird": "^3.4.5",
     "github": "^2.5.2"
   },
   "devDependencies": {}

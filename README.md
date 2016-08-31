@@ -1,7 +1,7 @@
 [![Build Status](https://semaphoreci.com/api/v1/alexisargyris/github-lambda/branches/master/shields_badge.svg)](https://semaphoreci.com/alexisargyris/github-lambda)
 
 # github-lambda
-a simple wrapper of selected [node-github](https://github.com/mikedeboer/node-github) functions for aws lambda
+a simple, promisified wrapper of selected [node-github](https://github.com/mikedeboer/node-github) functions for aws lambda (node.js 4.3)
 
 ## authentication
 
@@ -13,7 +13,7 @@ A file named 'creds.js' is required with the following content:
     };
     exports.creds = creds;
 
-## github api
+## node-github api
 
 The following functions are covered:
 
