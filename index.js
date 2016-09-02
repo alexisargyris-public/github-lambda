@@ -34,7 +34,7 @@ exports.handler = (event, context, callback) => {
     case 'getAll':
       // get all repos of the authenticated user
       Promise.promisify(github.repos.getAll)({ per_page: 100 })
-        .then((resp) => { debugger; callback(null, response) })
+        .then((resp) => { callback(null, response) })
         .catch((error) => { callback(error) });
       break;
     case 'getCommits':
@@ -93,3 +93,5 @@ exports.handler = (event, context, callback) => {
     }
   }
 }
+
+exports.handler({ cmd: 'getAll' });
