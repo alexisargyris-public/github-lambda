@@ -34,7 +34,7 @@ exports.handler = (event, context, callback) => {
     case 'getAll':
       // get all repos of the authenticated user
       Promise.promisify(github.repos.getAll)({ per_page: 100 })
-        .then((resp) => { callback(null, response) })
+        .then((response) => { callback(null, response) })
         .catch((error) => { callback(error) });
       break;
     case 'getCommits':
@@ -45,7 +45,7 @@ exports.handler = (event, context, callback) => {
       } else {
         let reponame = event.reponame;
         Promise.promisify(github.repos.getCommits)({ user: user, repo: reponame })
-          .then((resp) => { debugger; callback(null, response) })
+          .then((response) => { callback(null, response) })
           .catch((error) => { callback(error) });
       }
       break;
@@ -58,7 +58,7 @@ exports.handler = (event, context, callback) => {
         let reponame = event.reponame;
         let commitsha = event.commitsha;
         Promise.promisify(github.repos.getCommit)({ user: user, repo: reponame, sha: commitsha })
-          .then((resp) => { debugger; callback(null, response) })
+          .then((response) => { callback(null, response) })
           .catch((error) => { callback(error) });
       }
       break;
@@ -72,7 +72,7 @@ exports.handler = (event, context, callback) => {
         let path = event.path;
         let ref = event.ref;
         Promise.promisify(github.repos.getContent)({ user: user, repo: reponame, path: path, ref: ref })
-          .then((resp) => { debugger; callback(null, response) })
+          .then((response) => { callback(null, response) })
           .catch((error) => { callback(error) });
       }
       break;
@@ -85,7 +85,7 @@ exports.handler = (event, context, callback) => {
         let reponame = event.reponame;
         let sha = event.sha;
         Promise.promisify(github.gitdata.getTree)({ user: user, repo: reponame, sha: sha, recursive: true })
-          .then((resp) => { debugger; callback(null, response) })
+          .then((response) => { callback(null, response) })
           .catch((error) => { callback(error) });
       }
       break;
