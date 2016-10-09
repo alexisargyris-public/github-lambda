@@ -3,6 +3,11 @@
 let GitHubApi = require('github');
 let Promise = require('bluebird');
 let creds = require('./creds.js').creds;
+let results = [];
+
+function copyResults(response) {
+  response.map((item) => { results.push(item); });
+}
 
 exports.handler = (event, context, callback) => {
   // if no command was specified, then exit
@@ -45,7 +50,14 @@ exports.handler = (event, context, callback) => {
       } else {
         let reponame = event.reponame;
         Promise.promisify(github.repos.getCommits)({ user: user, repo: reponame })
-          .then((response) => { callback(null, response) })
+          .then((response) => {
+            copyResults(response);
+            if (github.hasNextPage(response)) {
+              github.getNextPage(response)
+                .then((response) => { copyResults(response); })
+            }
+            callback(null, results);
+          })
           .catch((error) => { callback(error) });
       }
       break;
