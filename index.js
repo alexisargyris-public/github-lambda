@@ -14,7 +14,7 @@ function copyAndContinue(error, response) {
   response.map((item) => { results.push(item); });
   if (github.hasNextPage(response)) {
     github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
-  } else { cb(results); }
+  } else { cb(null, results); }
 }
 
 exports.handler = (event, context, callback) => {
