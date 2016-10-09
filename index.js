@@ -93,5 +93,3 @@ exports.handler = (event, context, callback) => {
     }
   }
 }
-
-exports.handler({ cmd: 'getAll' });
