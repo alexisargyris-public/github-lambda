@@ -3,10 +3,17 @@
 let GitHubApi = require('github');
 let Promise = require('bluebird');
 let creds = require('./creds.js').creds;
+let github;
 let results = [];
 
-function copyResults(response) {
+function copyAndContinue(error, response) {
+  if (error) {
+    return false;
+  }
   response.map((item) => { results.push(item); });
+  if (github.hasNextPage(response)) {
+    github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
+  } else { callback(results); }
 }
 
 exports.handler = (event, context, callback) => {
@@ -17,7 +24,7 @@ exports.handler = (event, context, callback) => {
     // init github api
     let user = creds.user;
     let token = creds.token;
-    let github = new GitHubApi({
+    github = new GitHubApi({
       // required
       version: '3.0.0',
       // optional
@@ -50,15 +57,8 @@ exports.handler = (event, context, callback) => {
       } else {
         let reponame = event.reponame;
         Promise.promisify(github.repos.getCommits)({ user: user, repo: reponame })
-          .then((response) => {
-            copyResults(response);
-            if (github.hasNextPage(response)) {
-              github.getNextPage(response)
-                .then((response) => { copyResults(response); })
-            }
-            callback(null, results);
-          })
-          .catch((error) => { callback(error) });
+          .then((response) => { copyAndContinue(null, response); })
+          .catch((error) => { callback(error); });
       }
       break;
     case 'getCommit':
@@ -105,3 +105,8 @@ exports.handler = (event, context, callback) => {
     }
   }
 }
+
+// exports.handler({
+//   'cmd': 'getCommits',
+//   'reponame': 'amomonaima'
+// });
