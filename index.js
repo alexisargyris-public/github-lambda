@@ -5,6 +5,7 @@ let Promise = require('bluebird');
 let creds = require('./creds.js').creds;
 let github;
 let results = [];
+let cb;
 
 function copyAndContinue(error, response) {
   if (error) {
@@ -13,7 +14,7 @@ function copyAndContinue(error, response) {
   response.map((item) => { results.push(item); });
   if (github.hasNextPage(response)) {
     github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
-  } else { callback(results); }
+  } else { cb(results); }
 }
 
 exports.handler = (event, context, callback) => {
@@ -52,6 +53,7 @@ exports.handler = (event, context, callback) => {
     case 'getCommits':
       // get the commits of a repo
       // if no repo was provided, then exit
+      cb = callback;
       if (event.reponame === undefined) {
         callback(new Error('Missing repo parameters'))
       } else {
