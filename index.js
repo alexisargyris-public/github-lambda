@@ -59,7 +59,7 @@ exports.handler = (event, context, callback) => {
         callback(new Error('Missing repo parameters'))
       } else {
         let reponame = event.reponame;
-        Promise.promisify(github.repos.getCommits)({ user: user, repo: reponame })
+        Promise.promisify(github.repos.getCommits)({ user: user, repo: reponame, per_page: 100 })
           .then((response) => { copyAndContinue(null, response); })
           .catch((error) => { callback(error); });
       }
