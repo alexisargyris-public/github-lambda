@@ -54,6 +54,7 @@ exports.handler = (event, context, callback) => {
       // get the commits of a repo
       // if no repo was provided, then exit
       cb = callback;
+      results.length = 0;
       if (event.reponame === undefined) {
         callback(new Error('Missing repo parameters'))
       } else {
