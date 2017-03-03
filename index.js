@@ -10,6 +10,12 @@ exports.handler = (event, context, callback) => {
       github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
     } else { cb(null, results); }
   }
+  function existsItemInList(target, list) {
+    for (var index in list) {
+      if (target === list[index].path) return index;
+    }
+    return -1;
+  }
 
   let GitHubApi = require('github');
   let Promise = require('bluebird');
@@ -17,14 +23,23 @@ exports.handler = (event, context, callback) => {
   let github;
   let results = [];
   let cb;
+  let user;
+  let token;
+  let reponame;
+  let commitsha;
+  let commit;
+  let promises;
+  let getTreePrms;
+  let getContentPrms;
+  let textDecodeError = '<η αποκωδικοποίηση του κείμενου απέτυχε>';
 
   // if no command was specified, then exit
   if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
     callback(new Error('Missing cmd parameter'))
   } else {
     // init github api
-    let user = creds.user;
-    let token = creds.token;
+    user = creds.user;
+    token = creds.token;
     github = new GitHubApi({
       // required
       version: '3.0.0',
@@ -65,43 +80,40 @@ exports.handler = (event, context, callback) => {
       }
       break;
     case 'getCommit':
-      // get the content of a commit
+      // get a commit
       // if no repo/sha were provided, then exit
       if ((event.reponame === undefined) || (event.commitsha === undefined)) {
         callback(new Error('Missing repo/sha parameters'))
       } else {
-        let reponame = event.reponame;
-        let commitsha = event.commitsha;
+        reponame = event.reponame;
+        commitsha = event.commitsha;
+        getTreePrms = Promise.promisify(github.gitdata.getTree);
+        getContentPrms = Promise.promisify(github.repos.getContent);
         Promise.promisify(github.repos.getCommit)({ owner: user, repo: reponame, sha: commitsha })
-          .then((response) => { callback(null, response) })
-          .catch((error) => { callback(error) });
-      }
-      break;
-    case 'getContent':
-      // get the content of a file
-      // if no repo/path/ref were provided, then exit
-      if ((event.reponame === undefined) || (event.path === undefined) || (event.ref === undefined)) {
-        callback(new Error('Missing repo/path/ref parameters'))
-      } else {
-        let reponame = event.reponame;
-        let path = event.path;
-        let ref = event.ref;
-        Promise.promisify(github.repos.getContent)({ owner: user, repo: reponame, path: path, ref: ref })
-          .then((response) => { callback(null, response) })
-          .catch((error) => { callback(error) });
-      }
-      break;
-    case 'getTree':
-      // get the content of a tree
-      // if no repo/sha were provided, then exit
-      if ((event.reponame === undefined) || (event.sha === undefined)) {
-        callback(new Error('Missing repo/sha parameters'))
-      } else {
-        let reponame = event.reponame;
-        let sha = event.sha;
-        Promise.promisify(github.gitdata.getTree)({ owner: user, repo: reponame, sha: sha, recursive: true })
-          .then((response) => { callback(null, response) })
-          .catch((error) => { callback(error) });
+          .then((response) => {
+            commit = response;
+            return getTreePrms({ owner: user, repo: reponame, sha: commit.sha, recursive: true });
+          })
+          .then((tree) => {
+            let promises = [];
+            for (var file of commit.files) {
+              var check = existsItemInList(file.filename, tree.tree);
+              if ( check > 0) promises.push(
+                getContentPrms({ owner: user, repo: reponame, path: tree.tree[check].path, ref: commit.sha })
+              );
+            }
+            return Promise.all(promises);
+          })
+          .then((contents) => {
+            let i = 0;
+            for (var file of commit.files) {
+              try { file.content =  new Buffer(contents[i].content, 'base64').toString('utf8'); }
+              catch (e) { file.content = textDecodeError; }
+              i++;
+            }
+          })
+          .then(() => callback(null, commit))
+          .catch(error => callback(error));
       }
       break;
     default:
@@ -109,9 +121,11 @@ exports.handler = (event, context, callback) => {
   }
 }
 
-exports.handler({
-  // 'cmd': 'getCommits',
-  'cmd': 'getCommit',
-  'reponame': 'amomonaima',
-  'commitsha': '03e171ddb2f1d475b627915d497335ecc9a77c37'
-});
+/*
+  exports.handler({
+    // 'cmd': 'getCommits',
+    'cmd': 'getCommit',
+    'reponame': 'amomonaima',
+    'commitsha': '80b473dec837d3316d0b76960675a5761f9f359a'
+  });
+*/
