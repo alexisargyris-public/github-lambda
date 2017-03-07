@@ -50,6 +50,8 @@ exports.handler = (event, context, callback) => {
   let textDecodeError = '<η αποκωδικοποίηση του κείμενου απέτυχε>';
   let srcRootPath = 'src/';
   let srcList = [];
+  let defaultPage; // default value is 'undefined'
+  let defaultPerPage = 100
 
   // If no command was provided, then exit immediately.
   if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
@@ -88,13 +90,14 @@ exports.handler = (event, context, callback) => {
       cb = callback;
       results.length = 0;
       // If no repo was provided, then exit immediately.
+      // If optional parameters 'page' and 'per_page' are provided, then use them.
       if (event.reponame === undefined) {
         callback(new Error('Missing repo parameter'))
       } else {
-        let reponame = event.reponame;
-        Promise.promisify(github.repos.getCommits)({ owner: user, repo: reponame, per_page: 100 })
-          .then((response) => { copyAndContinue(null, response); })
-          .catch((error) => { callback(error); });
+        reponame = event.reponame;
+        Promise.promisify(github.repos.getCommits)({ owner: user, repo: reponame, page: (event.page === undefined) ? defaultPage : event.page, per_page: (event.per_page === undefined) ? defaultPerPage : event.per_page })
+          .then((response) => { debugger; copyAndContinue(null, response); })
+          .catch((error) => { debugger; callback(error); });
       }
       break;
     case 'getCommit':
@@ -135,11 +138,53 @@ exports.handler = (event, context, callback) => {
       }
       break;
     case 'getDoc':
+      // Get from the commit's tree all files whose path starts with 'src' and form a single markdown doc.
+      if ((event.reponame === undefined) || (event.commitsha === undefined)) { callback(new Error('Missing repo parameter')); }
+      else {
+        reponame = event.reponame;
+        commitsha = event.commitsha;
+        getTreePrms = Promise.promisify(github.gitdata.getTree);
+        getContentPrms = Promise.promisify(github.repos.getContent);
+        getTreePrms({ owner: user, repo: reponame, sha: commitsha, recursive: true })
+          .then((tree) => {
+            let promises = [];
+
+            srcList = tree.tree.filter((element, index, array) => { return element.path.startsWith(srcRootPath); })
+            for (var src of srcList) { promises.push( getContentPrms({ owner: user, repo: reponame, path: src.path, ref: commitsha }) ) };
+            return Promise.all(promises);
+          })
+          .then((contents) => {
+            let docContent = '';
+
+            for (var i = 0; i < contents.length; i++) {
+              docContent += '\n\n# ' + srcList[i].path +'\n\n';
+              docContent += new Buffer(contents[i].content, 'base64').toString('utf8');
+            }
+            debugger;
+            callback(null, new MarkdownIt().render(docContent));
+          })
+          .catch((error) => { debugger; callback(error); });
+      }
+      break;
+    default:
+    }
+  }
+}
+
+  exports.handler({
+    'cmd': 'getDoc',
+    'reponame': 'amomonaima',
+    // 'page': 1,
+    // 'per_page': 1
+    'commitsha': 'a6d2cef54473795854c7d3e9a5c10266662de4c6'
+  });
+
+/*
+    case 'getDoc':
       // Get from the latest commit's tree all files whose path starts with 'src' and form a single md doc.
       // If no repo name was provided, then exit immediately.
-      if (event.reponame === undefined) {
-        callback(new Error('Missing repo parameter'))
-      } else {
+      if (event.reponame === undefined) { callback(new Error('Missing repo parameter')); }
+      else {
         reponame = event.reponame;
         Promise.promisify(github.repos.getCommits)({ owner: user, repo: reponame, path: 'src/', page: 1, per_page: 1 })
           .then((commits) => {
@@ -167,15 +212,4 @@ exports.handler = (event, context, callback) => {
           .catch((error) => { callback(error); });
       }
       break;
-    default:
-    }
-  }
-}
-
-/*
-  exports.handler({
-    'cmd': 'getDoc',
-    'reponame': 'amomonaima'
-    // 'commitsha': '80b473dec837d3316d0b76960675a5761f9f359a'
-  });
 */
