@@ -45,13 +45,12 @@ exports.handler = (event, context, callback) => {
   let reponame;
   let commitsha;
   let commit;
-  let getTreePrms;
-  let getContentPrms;
   let textDecodeError = '<η αποκωδικοποίηση του κείμενου απέτυχε>';
   let srcRootPath = 'src/';
   let srcList = [];
   let defaultPage; // default value is 'undefined'
-  let defaultPerPage = 100
+  let defaultPerPage = 100;
+  let errorMissingParams = 'Required parameter is missing';
 
   // If no command was provided, then exit immediately.
   if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
@@ -79,137 +78,124 @@ exports.handler = (event, context, callback) => {
     });
     // Main switch.
     switch (event.cmd) {
-    case 'getRepos':
-      // Get repos of authenticated user.
-      Promise.promisify(github.repos.getAll)({ per_page: 100 })
-        .then((response) => { callback(null, response) })
-        .catch((error) => { callback(error) });
-      break;
-    case 'getCommits':
-      // Get commits of repo.
-      cb = callback;
-      results.length = 0;
-      // If no repo was provided, then exit immediately.
-      // If optional parameters 'page' and 'per_page' are provided, then use them.
-      if (event.reponame === undefined) {
-        callback(new Error('Missing repo parameter'))
-      } else {
-        reponame = event.reponame;
-        Promise.promisify(github.repos.getCommits)({ owner: user, repo: reponame, page: (event.page === undefined) ? defaultPage : event.page, per_page: (event.per_page === undefined) ? defaultPerPage : event.per_page })
-          .then((response) => { debugger; copyAndContinue(null, response); })
-          .catch((error) => { debugger; callback(error); });
-      }
-      break;
-    case 'getCommit':
-      // Get contents of commit.
-      // If no repo or sha were provided, then exit immediately.
-      if ((event.reponame === undefined) || (event.commitsha === undefined)) {
-        callback(new Error('Missing repo/sha parameters'))
-      } else {
-        reponame = event.reponame;
-        commitsha = event.commitsha;
-        getTreePrms = Promise.promisify(github.gitdata.getTree);
-        getContentPrms = Promise.promisify(github.repos.getContent);
-        Promise.promisify(github.repos.getCommit)({ owner: user, repo: reponame, sha: commitsha })
-          .then((response) => {
-            commit = response;
-            return getTreePrms({ owner: user, repo: reponame, sha: commit.sha, recursive: true });
+      /**
+       * Get repos of authenticated user.
+       */
+      case 'getRepos':
+        Promise.promisify(github.repos.getAll)({ per_page: 100 })
+          .then((response) => { callback(null, response) })
+          .catch((error) => { callback(error) });
+        break;
+      /**
+       * Get commits of repo.
+       * @param {string} reponame - the repo's name
+       * @param {number} [page=undefined] - the number of the page being requested
+       * @param {number} [per_page=100] - the number of commits a page should contain
+       */
+      case 'getCommits':
+        cb = callback;
+        results.length = 0;
+        // If required params are missing, then exit immediately.
+        if (event.reponame === undefined) {
+          callback(new Error(errorMissingParams))
+        } else {
+          reponame = event.reponame;
+          Promise.promisify(github.repos.getCommits)({
+            owner: user,
+            repo: reponame,
+            page: (event.page === undefined) ? defaultPage : event.page,
+            per_page: (event.per_page === undefined) ? defaultPerPage : event.per_page
           })
-          .then((tree) => {
-            let promises = [];
-            for (var file of commit.files) {
-              var check = existsItemInList(file.filename, tree.tree);
-              if ( check > 0) promises.push(
-                getContentPrms({ owner: user, repo: reponame, path: tree.tree[check].path, ref: commit.sha })
-              );
-            }
-            return Promise.all(promises);
+            .then((response) => { debugger; copyAndContinue(null, response); })
+            .catch((error) => { debugger; callback(error); });
+        }
+        break;
+      /**
+       * Get contents of commit.
+       * @param {string} reponame - the repo's name
+       * @param {string} commitsha - the commit's id
+       */
+      case 'getCommit':
+        // If required params are missing, then exit immediately.
+        if ((event.reponame === undefined) || (event.commitsha === undefined)) { callback(new Error(errorMissingParams)); }
+        else {
+          // get the commit
+          reponame = event.reponame;
+          commitsha = event.commitsha;
+          Promise.promisify(github.repos.getCommit)({
+            owner: user,
+            repo: reponame,
+            sha: commitsha
           })
-          .then((contents) => {
-            let i = 0;
-            for (var file of commit.files) {
-              try { file.content =  new Buffer(contents[i].content, 'base64').toString('utf8'); }
-              catch (e) { file.content = textDecodeError; }
-              i++;
-            }
-          })
-          .then(() => callback(null, commit))
-          .catch(error => callback(error));
-      }
-      break;
-    case 'getDoc':
-      // Get from the commit's tree all files whose path starts with 'src' and form a single markdown doc.
-      if ((event.reponame === undefined) || (event.commitsha === undefined)) { callback(new Error('Missing repo parameter')); }
-      else {
-        reponame = event.reponame;
-        commitsha = event.commitsha;
-        getTreePrms = Promise.promisify(github.gitdata.getTree);
-        getContentPrms = Promise.promisify(github.repos.getContent);
-        getTreePrms({ owner: user, repo: reponame, sha: commitsha, recursive: true })
-          .then((tree) => {
-            let promises = [];
+            .then((response) => {
+              // get the commit's tree
+              commit = response;
+              return Promise.promisify(github.gitdata.getTree)({
+                owner: user,
+                repo: reponame,
+                sha: commit.sha,
+                recursive: true
+              });
+            })
+            .then((tree) => {
+              // get the content of each file touched by the commit and all 'src' files at the time of the commit
+              let filePromises = [];
+              let docPromises = [];
+              let getContentPrms = Promise.promisify(github.repos.getContent);
+              // files contents
+              for (var file of commit.files) {
+                var check = existsItemInList(file.filename, tree.tree);
+                if (check > 0) filePromises.push(getContentPrms({
+                  owner: user,
+                  repo: reponame,
+                  path: tree.tree[check].path,
+                  ref: commit.sha
+                }));
+              }
+              // 'src' files
+              srcList = tree.tree.filter((element, index, array) => { return element.path.startsWith(srcRootPath); });
+              for (var src of srcList) {
+                docPromises.push(getContentPrms({
+                  owner: user,
+                  repo: reponame,
+                  path: src.path,
+                  ref: commitsha
+                }))
+              };
+              return Promise.all([Promise.all(filePromises), Promise.all(docPromises)]);
+            })
+            .then((contents) => {
+              let i = 0;
+              let docContent = '';
 
-            srcList = tree.tree.filter((element, index, array) => { return element.path.startsWith(srcRootPath); })
-            for (var src of srcList) { promises.push( getContentPrms({ owner: user, repo: reponame, path: src.path, ref: commitsha }) ) };
-            return Promise.all(promises);
-          })
-          .then((contents) => {
-            let docContent = '';
-
-            for (var i = 0; i < contents.length; i++) {
-              docContent += '\n\n# ' + srcList[i].path +'\n\n';
-              docContent += new Buffer(contents[i].content, 'base64').toString('utf8');
-            }
-            debugger;
-            callback(null, new MarkdownIt().render(docContent));
-          })
-          .catch((error) => { debugger; callback(error); });
-      }
-      break;
-    default:
+              // add the files to the commit
+              for (var file of commit.files) {
+                try { file.content = new Buffer(contents[0][i].content, 'base64').toString('utf8'); }
+                catch (e) { file.content = textDecodeError; }
+                i++;
+              }
+              // add 'doc' property to the commit
+              for (var j = 0; j < contents[1].length; j++) {
+                docContent += '\n\n# ' + srcList[j].path + '\n\n';
+                docContent += new Buffer(contents[1][j].content, 'base64').toString('utf8');
+              }
+              commit.doc = new MarkdownIt().render(docContent);
+            })
+            .then(() => { callback(null, commit) })
+            .catch(error => { callback(error) });
+        }
+        break;
+      default:
     }
   }
 }
 
+/*
   exports.handler({
-    'cmd': 'getDoc',
+    'cmd': 'getCommit',
     'reponame': 'amomonaima',
     // 'page': 1,
     // 'per_page': 1
     'commitsha': 'a6d2cef54473795854c7d3e9a5c10266662de4c6'
   });
-
-/*
-    case 'getDoc':
-      // Get from the latest commit's tree all files whose path starts with 'src' and form a single md doc.
-      // If no repo name was provided, then exit immediately.
-      if (event.reponame === undefined) { callback(new Error('Missing repo parameter')); }
-      else {
-        reponame = event.reponame;
-        Promise.promisify(github.repos.getCommits)({ owner: user, repo: reponame, path: 'src/', page: 1, per_page: 1 })
-          .then((commits) => {
-            commitsha = commits[0].sha;
-            getTreePrms = Promise.promisify(github.gitdata.getTree);
-            getContentPrms = Promise.promisify(github.repos.getContent);
-            return getTreePrms({ owner: user, repo: reponame, sha: commitsha, recursive: true });
-          })
-          .then((tree) => {
-            let promises = [];
-
-            srcList = tree.tree.filter((element, index, array) => { return element.path.startsWith(srcRootPath); })
-            for (var src of srcList) { promises.push( getContentPrms({ owner: user, repo: reponame, path: src.path, ref: commitsha }) ) };
-            return Promise.all(promises);
-          })
-          .then((contents) => {
-            let docContent = '';
-
-            for (var i = 0; i < contents.length; i++) {
-              docContent += '\n\n# ' + srcList[i].path +'\n\n';
-              docContent += new Buffer(contents[i].content, 'base64').toString('utf8');
-            }
-            callback(null, new MarkdownIt().render(docContent));
-          })
-          .catch((error) => { callback(error); });
-      }
-      break;
 */
