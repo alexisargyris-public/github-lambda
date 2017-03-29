@@ -16,7 +16,7 @@ exports.handler = (event, context, callback) => {
     if (error) {
       return false;
     }
-    response.map((item) => { results.push(item); });
+    response.map(item => { results.push(item); });
     if (github.hasNextPage(response)) {
       github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
     } else { cb(null, results); }
@@ -42,12 +42,8 @@ exports.handler = (event, context, callback) => {
   let cb;
   let user;
   let token;
-  let reponame;
-  let commitsha;
-  let commit;
   let textDecodeError = '<η αποκωδικοποίηση του κείμενου απέτυχε>';
   let srcRootPath = 'src/';
-  let srcList = [];
   let defaultPage; // default value is 'undefined'
   let defaultPerPage = 100;
   let errorMissingParams = 'Required parameter is missing';
@@ -83,8 +79,8 @@ exports.handler = (event, context, callback) => {
        */
       case 'getRepos':
         Promise.promisify(github.repos.getAll)({ per_page: 100 })
-          .then((response) => { callback(null, response) })
-          .catch((error) => { callback(error) });
+          .then(response => { callback(null, response) })
+          .catch(error => { callback(error) });
         break;
       /**
        * Get commits of repo.
@@ -93,21 +89,19 @@ exports.handler = (event, context, callback) => {
        * @param {number} [per_page=100] - the number of commits a page should contain
        */
       case 'getCommits':
-        cb = callback;
-        results.length = 0;
         // If required params are missing, then exit immediately.
-        if (event.reponame === undefined) {
-          callback(new Error(errorMissingParams))
-        } else {
-          reponame = event.reponame;
+        if (event.reponame === undefined) { callback(new Error(errorMissingParams)) }
+        else {
+          cb = callback;
+          results.length = 0;
           Promise.promisify(github.repos.getCommits)({
             owner: user,
-            repo: reponame,
+            repo: event.reponame,
             page: (event.page === undefined) ? defaultPage : event.page,
             per_page: (event.per_page === undefined) ? defaultPerPage : event.per_page
           })
-            .then((response) => { debugger; copyAndContinue(null, response); })
-            .catch((error) => { debugger; callback(error); });
+            .then(response => { copyAndContinue(null, response) })
+            .catch(error => { callback(error) });
         }
         break;
       /**
@@ -116,73 +110,75 @@ exports.handler = (event, context, callback) => {
        * @param {string} commitsha - the commit's id
        */
       case 'getCommit':
+        let commit = {};
+        let docContent = '';
+        let getContentPrms = Promise.promisify(github.repos.getContent);
+
         // If required params are missing, then exit immediately.
         if ((event.reponame === undefined) || (event.commitsha === undefined)) { callback(new Error(errorMissingParams)); }
         else {
           // get the commit
-          reponame = event.reponame;
-          commitsha = event.commitsha;
           Promise.promisify(github.repos.getCommit)({
             owner: user,
-            repo: reponame,
-            sha: commitsha
+            repo: event.reponame,
+            sha: event.commitsha
           })
-            .then((response) => {
-              // get the commit's tree
+            .then(response => {
+              // get all files starting with 'src/' touched by the commit
               commit = response;
+              return Promise.map(commit.files, (file, index, length) => {
+                // check if this file starts with 'src'
+                if (file.filename.startsWith(srcRootPath)) {
+                  return getContentPrms({
+                    owner: user,
+                    repo: event.reponame,
+                    path: file.filename,
+                    ref: event.commitsha
+                  })
+                    .then(result => {
+                      // store the file's content
+                      file.content = new Buffer(result.content, 'base64').toString('utf8');
+                    })
+                }
+                else { return Promise.resolve() }
+              })
+            })
+            .then(() => {
+              // get the commit's whole tree of files
               return Promise.promisify(github.gitdata.getTree)({
                 owner: user,
-                repo: reponame,
-                sha: commit.sha,
+                repo: event.reponame,
+                sha: event.commitsha,
                 recursive: true
               });
             })
-            .then((tree) => {
-              // get the content of each file touched by the commit and all 'src' files at the time of the commit
-              let filePromises = [];
-              let docPromises = [];
-              let getContentPrms = Promise.promisify(github.repos.getContent);
-              // files contents
-              for (var file of commit.files) {
-                var check = existsItemInList(file.filename, tree.tree);
-                if (check > 0) filePromises.push(getContentPrms({
-                  owner: user,
-                  repo: reponame,
-                  path: tree.tree[check].path,
-                  ref: commit.sha
-                }));
-              }
-              // 'src' files
-              srcList = tree.tree.filter((element, index, array) => { return element.path.startsWith(srcRootPath); });
-              for (var src of srcList) {
-                docPromises.push(getContentPrms({
-                  owner: user,
-                  repo: reponame,
-                  path: src.path,
-                  ref: commitsha
-                }))
-              };
-              return Promise.all([Promise.all(filePromises), Promise.all(docPromises)]);
+            .then(tree => {
+              // get all tree files starting with 'src/'
+              // TODO some of these files must have already been downloaded in the previous step. Why do it twice?
+              return Promise.map(tree.tree, (file, index, length) => {
+                // check if this file starts with 'src'
+                if (file.path.startsWith(srcRootPath)) {
+                  return getContentPrms({
+                    owner: user,
+                    repo: event.reponame,
+                    path: file.path,
+                    ref: event.commitsha
+                  })
+                    .then(result => {
+                      let cnt = new Buffer(result.content, 'base64').toString('utf8');
+                      // concatenate all files to form a single doc
+                      docContent += '\n\n# ' + file.path + '\n\n' + cnt + '\n\n';
+                    })
+                }
+                else { return Promise.resolve() }
+              })
             })
-            .then((contents) => {
-              let i = 0;
-              let docContent = '';
-
-              // add the files to the commit
-              for (var file of commit.files) {
-                try { file.content = new Buffer(contents[0][i].content, 'base64').toString('utf8'); }
-                catch (e) { file.content = textDecodeError; }
-                i++;
-              }
-              // add 'doc' property to the commit
-              for (var j = 0; j < contents[1].length; j++) {
-                docContent += '\n\n# ' + srcList[j].path + '\n\n';
-                docContent += new Buffer(contents[1][j].content, 'base64').toString('utf8');
-              }
+            .then(() => {
+              // convert markdown content to html and store it
               commit.doc = new MarkdownIt().render(docContent);
+              callback(null, commit)
             })
-            .then(() => { callback(null, commit) })
-            .catch(error => { callback(error) });
+            .catch(error => { debugger; callback(error) });
         }
         break;
       default:
@@ -192,10 +188,15 @@ exports.handler = (event, context, callback) => {
 
 /*
   exports.handler({
-    'cmd': 'getCommit',
-    'reponame': 'amomonaima',
+    // 'cmd': 'getRepos'
+
+    // 'cmd': 'getCommits',
+    // 'reponame': 'amomonaima',
     // 'page': 1,
     // 'per_page': 1
-    'commitsha': 'a6d2cef54473795854c7d3e9a5c10266662de4c6'
+
+    // 'cmd': 'getCommit',
+    // 'reponame': 'amomonaima',
+    // 'commitsha': 'c01511d565bd0b446353e3d5d99ea8848223ccfa'
   });
 */
