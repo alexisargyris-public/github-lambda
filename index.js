@@ -77,7 +77,7 @@ exports.handler = (event, context, callback) => {
       /**
        * Get repos of authenticated user.
        */
-      case 'getRepos':
+      case 'list':
         Promise.promisify(github.repos.getAll)({ per_page: 100 })
           .then(response => { callback(null, response) })
           .catch(error => { callback(error) });
@@ -88,7 +88,7 @@ exports.handler = (event, context, callback) => {
        * @param {number} [page=undefined] - the number of the page being requested
        * @param {number} [per_page=100] - the number of commits a page should contain
        */
-      case 'getCommits':
+      case 'single':
         // If required params are missing, then exit immediately.
         if (event.reponame === undefined) { callback(new Error(errorMissingParams)) }
         else {
@@ -109,7 +109,7 @@ exports.handler = (event, context, callback) => {
        * @param {string} reponame - the repo's name
        * @param {string} commitsha - the commit's id
        */
-      case 'getCommit':
+      case 'details':
         let commit = {};
         let docContent = '';
         let getContentPrms = Promise.promisify(github.repos.getContent);
