@@ -49,8 +49,10 @@ exports.handler = (event, context, callback) => {
   let errorMissingParams = 'Required parameter is missing';
 
   // If no command was provided, then exit immediately.
-  if ((event === undefined) || (event.cmd === undefined) || (event.cmd === '')) {
+  if ( (event === undefined) || (event.cmd === undefined) || (event.cmd === '') ) {
     callback(new Error('Missing cmd parameter'))
+  } else if ( (event.cmd !== 'sources') && (event.cmd !== 'list') && (event.cmd !== 'single') ) {
+    callback(new Error('Unknown command'))
   } else {
     // Init github api.
     user = creds.user;
@@ -77,7 +79,7 @@ exports.handler = (event, context, callback) => {
       /**
        * Get repos of authenticated user.
        */
-      case 'list':
+      case 'sources':
         Promise.promisify(github.repos.getAll)({ per_page: 100 })
           .then(response => { callback(null, response) })
           .catch(error => { callback(error) });
@@ -88,7 +90,7 @@ exports.handler = (event, context, callback) => {
        * @param {number} [page=undefined] - the number of the page being requested
        * @param {number} [per_page=100] - the number of commits a page should contain
        */
-      case 'single':
+      case 'list':
         // If required params are missing, then exit immediately.
         if (event.reponame === undefined) { callback(new Error(errorMissingParams)) }
         else {
@@ -108,8 +110,11 @@ exports.handler = (event, context, callback) => {
        * Get contents of commit.
        * @param {string} reponame - the repo's name
        * @param {string} commitsha - the commit's id
+       * @return {Object} a commit object as returned from github with the following additional information:
+       *  1. In each commit.files with a path starting with srcRootPath, a 'content' property is added holding the file's content in its original Markdown format. 
+       *  2. At the top level, a 'doc' property is added holding a concatenation of ???? in HTML format (converted from the original Markdown).
        */
-      case 'details':
+      case 'single':
         let commit = {};
         let docContent = '';
         let getContentPrms = Promise.promisify(github.repos.getContent);
@@ -124,8 +129,9 @@ exports.handler = (event, context, callback) => {
             sha: event.commitsha
           })
             .then(response => {
-              // get all files starting with 'src/' touched by the commit
+              // store the response as the result
               commit = response;
+              // get the content of all files touched by the commit, if their path starts with srcRootPath (note: order of execution doesn't matter). 
               return Promise.map(commit.files, (file, index, length) => {
                 // check if this file starts with 'src'
                 if (file.filename.startsWith(srcRootPath)) {
@@ -144,7 +150,7 @@ exports.handler = (event, context, callback) => {
               })
             })
             .then(() => {
-              // get the commit's whole tree of files
+              // now, to build the 'doc' property, start by getting the commit's whole tree of files
               return Promise.promisify(github.gitdata.getTree)({
                 owner: user,
                 repo: event.reponame,
@@ -153,11 +159,11 @@ exports.handler = (event, context, callback) => {
               });
             })
             .then(tree => {
-              // get all tree files starting with 'src/'
-              // TODO some of these files must have already been downloaded in the previous step. Why do it twice?
-              return Promise.map(tree.tree, (file, index, length) => {
-                // check if this file starts with 'src'
-                if (file.path.startsWith(srcRootPath)) {
+              // for each item in the tree (note: order of execution matters)
+              return Promise.mapSeries(tree.tree, (file, index, length) => {
+                // check if the item starts with srcRootPath and is a 'blob' (file), i.e. not a dir
+                if ( (file.path.startsWith(srcRootPath)) && (file.type === 'blob') ) {
+                  // get its contents
                   return getContentPrms({
                     owner: user,
                     repo: event.reponame,
@@ -188,15 +194,15 @@ exports.handler = (event, context, callback) => {
 
 /*
   exports.handler({
-    // 'cmd': 'getRepos'
+    // 'cmd': 'sources'
 
-    // 'cmd': 'getCommits',
+    // 'cmd': 'list',
     // 'reponame': 'amomonaima',
     // 'page': 1,
     // 'per_page': 1
 
-    // 'cmd': 'getCommit',
-    // 'reponame': 'amomonaima',
-    // 'commitsha': 'c01511d565bd0b446353e3d5d99ea8848223ccfa'
+    'cmd': 'single',
+    'reponame': 'amomonaima',
+    'commitsha': '72ffb6a9ac328c34245a9fee0292c8dd03a62c11'
   });
 */
