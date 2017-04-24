@@ -217,6 +217,7 @@ exports.handler = (event, context, callback) => {
   }
 }
 
+/*
   exports.handler({
     // 'cmd': 'sources'
 
@@ -225,7 +226,8 @@ exports.handler = (event, context, callback) => {
     // 'page': 1,
     // 'per_page': 1
 
-    'cmd': 'single',
-    'reponame': 'amomonaima',
-    'commitsha': '72ffb6a9ac328c34245a9fee0292c8dd03a62c11'
+    // 'cmd': 'single',
+    // 'reponame': 'amomonaima',
+    // 'commitsha': '72ffb6a9ac328c34245a9fee0292c8dd03a62c11'
   });
+*/
