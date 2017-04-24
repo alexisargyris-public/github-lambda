@@ -16,11 +16,18 @@ exports.handler = (event, context, callback) => {
     if (error) {
       return false;
     }
-    response.map(item => { results.push(item); });
+    response.map(item => {
+      results.push({
+        title: item.commit.message, // TODO: fix this
+        message: item.commit.message, // TODO: fix this
+        sha: item.sha
+      });
+    });
     if (github.hasNextPage(response)) {
       github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
     } else { cb(null, results); }
   }
+
   /**
    * Checks if target exists in list.
    * @param {*} target -
@@ -77,22 +84,27 @@ exports.handler = (event, context, callback) => {
     // Main switch.
     switch (event.cmd) {
       /**
-       * Get repos of authenticated user.
+       * Get sources (repos) of authenticated user.
        */
       case 'sources':
         Promise.promisify(github.repos.getAll)({ per_page: 100 })
-          .then(response => { callback(null, response) })
+          .then(response => {
+            let result = [];
+            response.forEach(element => { result.push({name: element.name}) });
+            callback(null, result);
+          })
           .catch(error => { callback(error) });
         break;
+
       /**
-       * Get commits of repo.
+       * Get cards (commits) of source (repo).
        * @param {string} reponame - the repo's name
        * @param {number} [page=undefined] - the number of the page being requested
        * @param {number} [per_page=100] - the number of commits a page should contain
        */
       case 'list':
-        // If required params are missing, then exit immediately.
-        if (event.reponame === undefined) { callback(new Error(errorMissingParams)) }
+        // if required params are missing, then exit immediately.
+        if (event.reponame === undefined) { callback(new Error(errorMissingParams)); }
         else {
           cb = callback;
           results.length = 0;
@@ -106,6 +118,7 @@ exports.handler = (event, context, callback) => {
             .catch(error => { callback(error) });
         }
         break;
+
       /**
        * Get contents of commit.
        * @param {string} reponame - the repo's name
@@ -119,7 +132,7 @@ exports.handler = (event, context, callback) => {
         let docContent = '';
         let getContentPrms = Promise.promisify(github.repos.getContent);
 
-        // If required params are missing, then exit immediately.
+        // if required params are missing, then exit immediately.
         if ((event.reponame === undefined) || (event.commitsha === undefined)) { callback(new Error(errorMissingParams)); }
         else {
           // get the commit
@@ -128,13 +141,24 @@ exports.handler = (event, context, callback) => {
             repo: event.reponame,
             sha: event.commitsha
           })
+            // store the commit for later; get the content of all files touched by the commit
             .then(response => {
               // store the response as the result
-              commit = response;
+              commit.created = response.commit.committer.date;
               // get the content of all files touched by the commit, if their path starts with srcRootPath (note: order of execution doesn't matter). 
-              return Promise.map(commit.files, (file, index, length) => {
+              return Promise.map(response.files, (file, index, length) => {
                 // check if this file starts with 'src'
                 if (file.filename.startsWith(srcRootPath)) {
+                  if (commit.files === undefined) {
+                    commit.files = [];
+                  } else {
+                    commit.files.push({
+                      path: file.filename,
+                      changes: file.changes,
+                      deletions: file.deletions,
+                      additions: file.additions
+                    })
+                  }
                   return getContentPrms({
                     owner: user,
                     repo: event.reponame,
@@ -149,8 +173,8 @@ exports.handler = (event, context, callback) => {
                 else { return Promise.resolve() }
               })
             })
+            // now, to build the 'doc' property, start by getting the commit's whole tree of files
             .then(() => {
-              // now, to build the 'doc' property, start by getting the commit's whole tree of files
               return Promise.promisify(github.gitdata.getTree)({
                 owner: user,
                 repo: event.reponame,
@@ -158,6 +182,7 @@ exports.handler = (event, context, callback) => {
                 recursive: true
               });
             })
+            // get contents of all source tree items to form current doc
             .then(tree => {
               // for each item in the tree (note: order of execution matters)
               return Promise.mapSeries(tree.tree, (file, index, length) => {
@@ -170,21 +195,21 @@ exports.handler = (event, context, callback) => {
                     path: file.path,
                     ref: event.commitsha
                   })
+                    // concatenate the content of each file with the previous ones to form a single doc
                     .then(result => {
                       let cnt = new Buffer(result.content, 'base64').toString('utf8');
-                      // concatenate all files to form a single doc
                       docContent += '\n\n# ' + file.path + '\n\n' + cnt + '\n\n';
                     })
                 }
                 else { return Promise.resolve() }
               })
             })
+            // convert markdown doc content to html
             .then(() => {
-              // convert markdown content to html and store it
               commit.doc = new MarkdownIt().render(docContent);
               callback(null, commit)
             })
-            .catch(error => { debugger; callback(error) });
+            .catch(error => { callback(error) });
         }
         break;
       default:
@@ -192,7 +217,6 @@ exports.handler = (event, context, callback) => {
   }
 }
 
-/*
   exports.handler({
     // 'cmd': 'sources'
 
@@ -205,4 +229,3 @@ exports.handler = (event, context, callback) => {
     'reponame': 'amomonaima',
     'commitsha': '72ffb6a9ac328c34245a9fee0292c8dd03a62c11'
   });
-*/
