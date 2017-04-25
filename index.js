@@ -169,7 +169,7 @@ exports.handler = (event, context, callback) => {
                   })
                     .then(result => {
                       // store the new content in the file record that was pushed above
-                      commit.files[commit.files - 1].content = new Buffer(result.content, 'base64').toString('utf8');
+                      commit.files[commit.files.length - 1].content = new Buffer(result.content, 'base64').toString('utf8');
                     })
                 }
                 else { return Promise.resolve() }
