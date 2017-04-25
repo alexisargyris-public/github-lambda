@@ -145,20 +145,18 @@ exports.handler = (event, context, callback) => {
             .then(response => {
               // store the response as the result
               commit.created = response.commit.committer.date;
+              // 'files' may contain 0 or more results
+              commit.files = [];
               // get the content of all files touched by the commit, if their path starts with srcRootPath (note: order of execution doesn't matter). 
               return Promise.map(response.files, (file, index, length) => {
                 // check if this file starts with 'src'
                 if (file.filename.startsWith(srcRootPath)) {
-                  if (commit.files === undefined) {
-                    commit.files = [];
-                  } else {
-                    commit.files.push({
-                      path: file.filename,
-                      changes: file.changes,
-                      deletions: file.deletions,
-                      additions: file.additions
-                    })
-                  }
+                  commit.files.push({
+                    path: file.filename,
+                    changes: file.changes,
+                    deletions: file.deletions,
+                    additions: file.additions
+                  })
                   return getContentPrms({
                     owner: user,
                     repo: event.reponame,
@@ -166,8 +164,8 @@ exports.handler = (event, context, callback) => {
                     ref: event.commitsha
                   })
                     .then(result => {
-                      // store the file's content
-                      file.content = new Buffer(result.content, 'base64').toString('utf8');
+                      // store the new content in the file record that was pushed above
+                      commit.files[commit.files - 1].content = new Buffer(result.content, 'base64').toString('utf8');
                     })
                 }
                 else { return Promise.resolve() }
