@@ -17,9 +17,10 @@ exports.handler = (event, context, callback) => {
       return false;
     }
     response.map(item => {
+      let title = item.commit.message.split('\n')[0];
       results.push({
-        title: item.commit.message, // TODO: fix this
-        message: item.commit.message, // TODO: fix this
+        title: title, // split the commit message at \n and return the first part
+        message: item.commit.message.replace(title, '').trim(), // return the rest of the commit message
         sha: item.sha,
         created: '',
         doc: '',
