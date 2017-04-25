@@ -155,7 +155,7 @@ exports.handler = (event, context, callback) => {
               return Promise.map(response.files, (file, index, length) => {
                 let fileRec = {};
                 // check if this file starts with 'src'
-                if (file.filename.startsWith(srcRootPath)) {
+                if ( (file.filename.startsWith(srcRootPath)) && (file.status !== 'removed') ) {
                   fileRec.filename = file.filename;
                   fileRec.changes = file.changes;
                   fileRec.deletions = file.deletions;
@@ -230,6 +230,6 @@ exports.handler = (event, context, callback) => {
 
     // 'cmd': 'single',
     // 'reponame': 'amomonaima',
-    // 'commitsha': 'bae6e33ddea2ea2cd36693557e8551bf765fd2d3'
+    // 'commitsha': '42236c39239eb4d5ae4489eba24077c28f2a2b8e'
   });
 */
