@@ -20,7 +20,11 @@ exports.handler = (event, context, callback) => {
       results.push({
         title: item.commit.message, // TODO: fix this
         message: item.commit.message, // TODO: fix this
-        sha: item.sha
+        sha: item.sha,
+        created: '',
+        doc: '',
+        files: [],
+        visible: false // initiallization
       });
     });
     if (github.hasNextPage(response)) {
