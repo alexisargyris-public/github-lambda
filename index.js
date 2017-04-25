@@ -153,23 +153,23 @@ exports.handler = (event, context, callback) => {
               commit.files = [];
               // get the content of all files touched by the commit, if their path starts with srcRootPath (note: order of execution doesn't matter). 
               return Promise.map(response.files, (file, index, length) => {
+                let fileRec = {};
                 // check if this file starts with 'src'
                 if (file.filename.startsWith(srcRootPath)) {
-                  commit.files.push({
-                    path: file.filename,
-                    changes: file.changes,
-                    deletions: file.deletions,
-                    additions: file.additions
-                  })
+                  fileRec.filename = file.filename;
+                  fileRec.changes = file.changes;
+                  fileRec.deletions = file.deletions;
+                  fileRec.additions = file.additions;
                   return getContentPrms({
                     owner: user,
                     repo: event.reponame,
                     path: file.filename,
                     ref: event.commitsha
                   })
+                    // store the new file record
                     .then(result => {
-                      // store the new content in the file record that was pushed above
-                      commit.files[commit.files.length - 1].content = new Buffer(result.content, 'base64').toString('utf8');
+                      fileRec.content = new Buffer(result.content, 'base64').toString('utf8');
+                      commit.files.push(fileRec);
                     })
                 }
                 else { return Promise.resolve() }
@@ -230,6 +230,6 @@ exports.handler = (event, context, callback) => {
 
     // 'cmd': 'single',
     // 'reponame': 'amomonaima',
-    // 'commitsha': '72ffb6a9ac328c34245a9fee0292c8dd03a62c11'
+    // 'commitsha': 'bae6e33ddea2ea2cd36693557e8551bf765fd2d3'
   });
 */
