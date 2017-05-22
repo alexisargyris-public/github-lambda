@@ -5,7 +5,7 @@
  * @param {*} event -
  * @param {*} context -
  * @param {*} callback -
-*/
+ */
 exports.handler = (event, context, callback) => {
   /**
    * Copy response to results and continue with next page.
@@ -125,7 +125,7 @@ exports.handler = (event, context, callback) => {
         break;
 
       /**
-       * Get contents of commit.
+       * Get contents of card (commit).
        * @param {string} reponame - the repo's name
        * @param {string} commitsha - the commit's id
        * @return {Object} a commit object as returned from github with the following additional information:
@@ -233,4 +233,4 @@ exports.handler = (event, context, callback) => {
     // 'reponame': 'amomonaima',
     // 'commitsha': '42236c39239eb4d5ae4489eba24077c28f2a2b8e'
   });
-*/
+ */
