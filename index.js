@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 
 /** 
  * Simple wrapper to selected github api functions.
@@ -14,23 +14,29 @@ exports.handler = (event, context, callback) => {
    */
   function copyAndContinue(error, response) {
     if (error) {
-      return false;
+      return false
     }
     response.map(item => {
-      let title = item.commit.message.split('\n')[0];
+      let title = item.commit.message.split('\n')[0]
       results.push({
         title: title, // split the commit message at \n and return the first part
         message: item.commit.message.replace(title, '').trim(), // return the rest of the commit message
         sha: item.sha,
-        created: '',
+        created: item.commit.committer.date,
         doc: '',
         files: [],
         visible: false // initiallization
-      });
-    });
+      })
+    })
     if (github.hasNextPage(response)) {
-      github.getNextPage(response, { 'user-agent': 'alexisargyris' }, copyAndContinue)
-    } else { cb(null, results); }
+      github.getNextPage(
+        response,
+        { 'user-agent': 'alexisargyris' },
+        copyAndContinue
+      )
+    } else {
+      cb(null, results)
+    }
   }
 
   /**
@@ -40,35 +46,39 @@ exports.handler = (event, context, callback) => {
    */
   function existsItemInList(target, list) {
     for (var index in list) {
-      if (target === list[index].path) return index;
+      if (target === list[index].path) return index
     }
-    return -1;
+    return -1
   }
 
-  let GitHubApi = require('github');
-  let Promise = require('bluebird');
-  let MarkdownIt = require('markdown-it');
-  let creds = require('./creds.js').creds;
-  let github;
-  let results = [];
-  let cb;
-  let user;
-  let token;
-  let textDecodeError = '<η αποκωδικοποίηση του κείμενου απέτυχε>';
-  let srcRootPath = 'src/';
-  let defaultPage; // default value is 'undefined'
-  let defaultPerPage = 100;
-  let errorMissingParams = 'Required parameter is missing';
+  let GitHubApi = require('github')
+  let Promise = require('bluebird')
+  let MarkdownIt = require('markdown-it')
+  let creds = require('./creds.js').creds
+  let github
+  let results = []
+  let cb
+  let user
+  let token
+  let textDecodeError = '<η αποκωδικοποίηση του κείμενου απέτυχε>'
+  let srcRootPath = 'src/'
+  let defaultPage // default value is 'undefined'
+  let defaultPerPage = 100
+  let errorMissingParams = 'Required parameter is missing'
 
   // If no command was provided, then exit immediately.
-  if ( (event === undefined) || (event.cmd === undefined) || (event.cmd === '') ) {
+  if (event === undefined || event.cmd === undefined || event.cmd === '') {
     callback(new Error('Missing cmd parameter'))
-  } else if ( (event.cmd !== 'sources') && (event.cmd !== 'list') && (event.cmd !== 'single') ) {
+  } else if (
+    event.cmd !== 'sources' &&
+    event.cmd !== 'list' &&
+    event.cmd !== 'single'
+  ) {
     callback(new Error('Unknown command'))
   } else {
     // Init github api.
-    user = creds.user;
-    token = creds.token;
+    user = creds.user
+    token = creds.token
     github = new GitHubApi({
       // required
       version: '3.0.0',
@@ -81,11 +91,11 @@ exports.handler = (event, context, callback) => {
       headers: {
         'user-agent': user
       }
-    });
+    })
     github.authenticate({
       type: 'oauth',
       token: token
-    });
+    })
     // Main switch.
     switch (event.cmd) {
       /**
@@ -94,12 +104,16 @@ exports.handler = (event, context, callback) => {
       case 'sources':
         Promise.promisify(github.repos.getAll)({ per_page: 100 })
           .then(response => {
-            let result = [];
-            response.forEach(element => { result.push({name: element.name}) });
-            callback(null, result);
+            let result = []
+            response.forEach(element => {
+              result.push({ name: element.name })
+            })
+            callback(null, result)
           })
-          .catch(error => { callback(error) });
-        break;
+          .catch(error => {
+            callback(error)
+          })
+        break
 
       /**
        * Get cards (commits) of source (repo).
@@ -109,20 +123,26 @@ exports.handler = (event, context, callback) => {
        */
       case 'list':
         // if required params are missing, then exit immediately.
-        if (event.reponame === undefined) { callback(new Error(errorMissingParams)); }
-        else {
-          cb = callback;
-          results.length = 0;
+        if (event.reponame === undefined) {
+          callback(new Error(errorMissingParams))
+        } else {
+          cb = callback
+          results.length = 0
           Promise.promisify(github.repos.getCommits)({
             owner: user,
             repo: event.reponame,
-            page: (event.page === undefined) ? defaultPage : event.page,
-            per_page: (event.per_page === undefined) ? defaultPerPage : event.per_page
+            page: event.page === undefined ? defaultPage : event.page,
+            per_page:
+              event.per_page === undefined ? defaultPerPage : event.per_page
           })
-            .then(response => { copyAndContinue(null, response) })
-            .catch(error => { callback(error) });
+            .then(response => {
+              copyAndContinue(null, response)
+            })
+            .catch(error => {
+              callback(error)
+            })
         }
-        break;
+        break
 
       /**
        * Get contents of card (commit).
@@ -133,13 +153,14 @@ exports.handler = (event, context, callback) => {
        *  2. At the top level, a 'doc' property is added holding a concatenation of ???? in HTML format (converted from the original Markdown).
        */
       case 'single':
-        let commit = {};
-        let docContent = '';
-        let getContentPrms = Promise.promisify(github.repos.getContent);
+        let commit = {}
+        let docContent = ''
+        let getContentPrms = Promise.promisify(github.repos.getContent)
 
         // if required params are missing, then exit immediately.
-        if ((event.reponame === undefined) || (event.commitsha === undefined)) { callback(new Error(errorMissingParams)); }
-        else {
+        if (event.reponame === undefined || event.commitsha === undefined) {
+          callback(new Error(errorMissingParams))
+        } else {
           // get the commit
           Promise.promisify(github.repos.getCommit)({
             owner: user,
@@ -148,32 +169,37 @@ exports.handler = (event, context, callback) => {
           })
             // store the commit for later; get the content of all files touched by the commit
             .then(response => {
-              // store the response as the result
-              commit.created = response.commit.committer.date;
-              // 'files' may contain 0 or more results
-              commit.files = [];
-              // get the content of all files touched by the commit, if their path starts with srcRootPath (note: order of execution doesn't matter). 
+              // get the content of all files touched by the commit, if their path starts with srcRootPath (note: order of execution doesn't matter).
               return Promise.map(response.files, (file, index, length) => {
-                let fileRec = {};
+                let fileRec = {}
                 // check if this file starts with 'src'
-                if ( (file.filename.startsWith(srcRootPath)) && (file.status !== 'removed') ) {
-                  fileRec.filename = file.filename;
-                  fileRec.changes = file.changes;
-                  fileRec.deletions = file.deletions;
-                  fileRec.additions = file.additions;
-                  return getContentPrms({
-                    owner: user,
-                    repo: event.reponame,
-                    path: file.filename,
-                    ref: event.commitsha
-                  })
-                    // store the new file record
-                    .then(result => {
-                      fileRec.content = new Buffer(result.content, 'base64').toString('utf8');
-                      commit.files.push(fileRec);
+                if (
+                  file.filename.startsWith(srcRootPath) &&
+                  file.status !== 'removed'
+                ) {
+                  fileRec.filename = file.filename
+                  fileRec.changes = file.changes
+                  fileRec.deletions = file.deletions
+                  fileRec.additions = file.additions
+                  return (
+                    getContentPrms({
+                      owner: user,
+                      repo: event.reponame,
+                      path: file.filename,
+                      ref: event.commitsha
                     })
+                      // store the new file record
+                      .then(result => {
+                        fileRec.content = new Buffer(
+                          result.content,
+                          'base64'
+                        ).toString('utf8')
+                        commit.files.push(fileRec)
+                      })
+                  )
+                } else {
+                  return Promise.resolve()
                 }
-                else { return Promise.resolve() }
               })
             })
             // now, to build the 'doc' property, start by getting the commit's whole tree of files
@@ -183,54 +209,62 @@ exports.handler = (event, context, callback) => {
                 repo: event.reponame,
                 sha: event.commitsha,
                 recursive: true
-              });
+              })
             })
             // get contents of all source tree items to form current doc
             .then(tree => {
               // for each item in the tree (note: order of execution matters)
               return Promise.mapSeries(tree.tree, (file, index, length) => {
                 // check if the item starts with srcRootPath and is a 'blob' (file), i.e. not a dir
-                if ( (file.path.startsWith(srcRootPath)) && (file.type === 'blob') ) {
+                if (file.path.startsWith(srcRootPath) && file.type === 'blob') {
                   // get its contents
-                  return getContentPrms({
-                    owner: user,
-                    repo: event.reponame,
-                    path: file.path,
-                    ref: event.commitsha
-                  })
-                    // concatenate the content of each file with the previous ones to form a single doc
-                    .then(result => {
-                      let cnt = new Buffer(result.content, 'base64').toString('utf8');
-                      docContent += '\n\n# ' + file.path + '\n\n' + cnt + '\n\n';
+                  return (
+                    getContentPrms({
+                      owner: user,
+                      repo: event.reponame,
+                      path: file.path,
+                      ref: event.commitsha
                     })
+                      // concatenate the content of each file with the previous ones to form a single doc
+                      .then(result => {
+                        let cnt = new Buffer(result.content, 'base64').toString(
+                          'utf8'
+                        )
+                        docContent +=
+                          '\n\n# ' + file.path + '\n\n' + cnt + '\n\n'
+                      })
+                  )
+                } else {
+                  return Promise.resolve()
                 }
-                else { return Promise.resolve() }
               })
             })
             // convert markdown doc content to html
             .then(() => {
-              commit.doc = new MarkdownIt().render(docContent);
+              commit.doc = new MarkdownIt().render(docContent)
               callback(null, commit)
             })
-            .catch(error => { callback(error) });
+            .catch(error => {
+              callback(error)
+            })
         }
-        break;
+        break
       default:
     }
   }
 }
 
 /*
-  exports.handler({
-    // 'cmd': 'sources'
+exports.handler({
+  // 'cmd': 'sources'
 
-    // 'cmd': 'list',
-    // 'reponame': 'amomonaima',
-    // 'page': 1,
-    // 'per_page': 1
+  // cmd: 'list',
+  // reponame: 'amomonaima',
+  // page: 1,
+  // per_page: 1
 
-    // 'cmd': 'single',
-    // 'reponame': 'amomonaima',
-    // 'commitsha': '42236c39239eb4d5ae4489eba24077c28f2a2b8e'
-  });
- */
+  // cmd: 'single',
+  // reponame: 'amomonaima',
+  // commitsha: '42236c39239eb4d5ae4489eba24077c28f2a2b8e'
+})
+*/
