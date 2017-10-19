@@ -152,7 +152,7 @@ exports.handler = (event, context, callback) => {
        *  2. At the top level, a 'doc' property is added holding a concatenation of ???? in HTML format (converted from the original Markdown).
        */
       case 'single':
-        let commit = {}
+        let commit = { doc: '', files: [] }
         let docContent = ''
         let getContentPrms = Promise.promisify(github.repos.getContent)
 
