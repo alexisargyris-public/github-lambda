@@ -24,8 +24,7 @@ exports.handler = (event, context, callback) => {
         sha: item.sha,
         created: item.commit.committer.date,
         doc: '',
-        files: [],
-        visible: false // initiallization
+        files: []
       })
     })
     if (github.hasNextPage(response)) {
